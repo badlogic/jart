@@ -21,9 +21,7 @@ import soot.SootClass;
 import soot.options.Options;
 
 /**
- * Takes a directory containing .class files and generates C++ header and implementation
- * files. Additionally adds Java source as comments to the C++ header to more easily
- * understand the generated code.
+ * Takes a directory containing .class files and generates Dart Code from the JVM bytecode.
  * 
  * @author mzechner
  *
@@ -90,19 +88,16 @@ public class Jart {
 		
 		Set<SootClass> classes = new HashSet<SootClass>();
 		for(SootClass clazz: Scene.v().getClasses()) {		
-			generatedFiles.add(Mangling.mangle(clazz) + ".h");
-			generatedFiles.add(Mangling.mangle(clazz) + ".cpp");
+			generatedFiles.add(Mangling.mangle(clazz) + ".dart");
 			classes.add(clazz);
 			ClassInfo info = new ClassInfo(clazz);
 			classInfos.put(clazz, info);
 		}
-		generatedFiles.add("classes.h");
-		generatedFiles.add("classes.cpp");
 		return classes;
 	}
 	
 	/**
-	 * Generates .h/.cpp files for each class found in the classpath
+	 * Generates .dart files for each class found in the classpath
 	 */
 	public void compile() {
 		// load the classes and source files
@@ -120,7 +115,7 @@ public class Jart {
 		for(String f: new File(outputPath).list(new FilenameFilter() {
 			@Override
 			public boolean accept(File arg0, String name) {
-				return name.endsWith(".h") || name.endsWith(".cpp");
+				return name.endsWith(".dart");
 			}
 		})) {
 			if(!generatedFiles.contains(f)) {
