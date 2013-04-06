@@ -1,13 +1,14 @@
 package jart;
 
 import jart.generators.cpp.CppCompiler;
+import jart.generators.cpp.CppMangler;
 import jart.generators.cpp.HeaderGenerator;
 import jart.generators.cpp.ImplementationGenerator;
 import jart.generators.cpp.RuntimeGenerator;
+import jart.generators.dart.DartCompiler;
 import jart.info.ClassInfo;
 import jart.utils.FileDescriptor;
 import jart.utils.JavaSourceProvider;
-import jart.utils.Mangling;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -93,7 +94,7 @@ public class Jart {
 		Set<SootClass> classes = new HashSet<SootClass>();
 		for(SootClass clazz: Scene.v().getClasses()) {		
 			classes.add(clazz);
-			ClassInfo info = new ClassInfo(clazz);
+			ClassInfo info = new ClassInfo(compiler.getMangler(), compiler.getTypeConverter(), clazz);
 			classInfos.put(clazz, info);
 		}
 		return classes;
@@ -123,8 +124,8 @@ public class Jart {
 		String sources = args[1].endsWith("/")? args[1]: args[1] + "/";
 		String outputDir = args[2].endsWith("/")? args[2]: args[2] + "/";
 		
-//		Compiler compiler = new JartCompiler();
-		Compiler compiler = new CppCompiler();
+		Compiler compiler = new DartCompiler();
+//		Compiler compiler = new CppCompiler();
 		
 		Jart jart = new Jart(compiler, classpath, sources, outputDir, false);
 		jart.compile();

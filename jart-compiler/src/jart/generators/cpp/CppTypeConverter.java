@@ -1,4 +1,6 @@
-package jart.utils;
+package jart.generators.cpp;
+
+import jart.utils.TypeConverter;
 
 import java.util.List;
 
@@ -23,18 +25,20 @@ import soot.VoidType;
  * @author mzechner
  *
  */
-public class CTypes {
+public class CppTypeConverter implements TypeConverter {
+	static CppMangler mangler = new CppMangler();
+	
 	/**
 	 * Converts a Soot {@link Type} to C/C++ type string.
 	 * @param type the Type
 	 * @return the C/C++ type string
 	 */
-	public static String toCType(Type type) {
+	public String toType(Type type) {
 		if(type instanceof RefType) {
-			return Mangling.mangle(type) + "*";
+			return mangler.mangle(type) + "*";
 		} else if(type instanceof ArrayType) {
 			ArrayType t = (ArrayType)type;			
-			String elementType = toCType(t.baseType);
+			String elementType = toType(t.baseType);
 			String array = generateArraySignature(elementType, t.numDimensions) + "*";
 			return array;			
 		} else {		
@@ -52,7 +56,7 @@ public class CTypes {
 		}
 	}
 	
-	public static String toUnsignedCType(Type type) {
+	public String toUnsignedType(Type type) {
 		if(type instanceof PrimType) {	
 			if(type instanceof ByteType) return "j_ubyte";			
 			if(type instanceof ShortType) return "j_ushort";
@@ -69,7 +73,7 @@ public class CTypes {
 	 * @param numDimensions
 	 * @return
 	 */
-	public static String generateArraySignature(String elementType, int numDimensions) {
+	public String generateArraySignature(String elementType, int numDimensions) {
 		String array = "";
 		for(int i = 0; i < numDimensions; i++) array += "Array<";							
 		array += elementType;
@@ -78,16 +82,16 @@ public class CTypes {
 		return array;
 	}
 	
-	public static String generateArray(int size, String elementType, boolean isPrimitive) {
+	public String generateArray(int size, String elementType, boolean isPrimitive) {
 		return generateArray(Integer.toString(size), elementType, isPrimitive);
 	}
 	
-	public static String generateArray(String size, String elementType, boolean isPrimitive) {
+	public String generateArray(String size, String elementType, boolean isPrimitive) {
 		String clazz = getElementTypeClass(elementType);
 		return "new Array<" + elementType + ">(" + size + ", " + isPrimitive + ", 1, " + clazz + ")";
 	}
 	
-	private static String getElementTypeClass(String elementType) {
+	private String getElementTypeClass(String elementType) {
 		if(elementType.equals("j_byte")) return "&java_lang_Byte::f_TYPE";
 		else if(elementType.equals("j_bool")) return "&java_lang_Boolean::f_TYPE";
 		else if(elementType.equals("j_char")) return "&java_lang_Character::f_TYPE"; 
@@ -109,7 +113,7 @@ public class CTypes {
 	 * @param sizes array containing the sizes for each dimensions
 	 * @return
 	 */
-	public static String generateMultiArray(String target, String elementType, boolean isPrimitive, List<String> sizes) {
+	public String generateMultiArray(String target, String elementType, boolean isPrimitive, List<String> sizes) {
 		String clazz = getElementTypeClass(elementType);
 		String newMultiArray = target + " = new " + generateArraySignature(elementType, sizes.size()) + "(" + sizes.get(0) + ", false, " + sizes.size() + ", " + clazz  + ");\n";
 		String counter = target + "_c0";
@@ -143,7 +147,7 @@ public class CTypes {
 		return newMultiArray;
 	}
 	
-	private static String indent(int depth) {
+	private String indent(int depth) {
 		StringBuffer buffer = new StringBuffer();
 		for(int i = 0; i < depth; i++) {
 			buffer.append("\t");

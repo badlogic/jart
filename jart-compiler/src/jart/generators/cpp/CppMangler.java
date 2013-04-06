@@ -1,5 +1,6 @@
-package jart.utils;
+package jart.generators.cpp;
 
+import jart.utils.Mangler;
 import soot.ArrayType;
 import soot.RefType;
 import soot.SootClass;
@@ -14,7 +15,7 @@ import soot.Type;
  * @author mzechner
  *
  */
-public class Mangling {
+public class CppMangler implements Mangler {
 	public static final String FIELD_PREFIX = "f_";
 	public static final String METHOD_PREFIX = "m_";
 	
@@ -23,7 +24,7 @@ public class Mangling {
 	 * @param field the {@link SootField}
 	 * @return the mangled name, prefixed with {@link #FIELD_PREFIX}
 	 */
-	public static String mangle(SootField field) {
+	public String mangle(SootField field) {
 		return FIELD_PREFIX + field.getName().trim();
 	}
 	
@@ -33,7 +34,7 @@ public class Mangling {
 	 * @param method the {@link SootMethod}
 	 * @return the mangled name, prefixed with {@link #METHOD_PREFIX}
 	 */
-	public static String mangle(SootMethod method) {
+	public String mangle(SootMethod method) {
 		return METHOD_PREFIX + method.getName().replace('.', '_').replace('<', ' ').replace('>', ' ').trim();
 	}
 	
@@ -43,7 +44,7 @@ public class Mangling {
 	 * @param method the {@link SootMethodRef}
 	 * @return the mangled name, prefixed with {@link #METHOD_PREFIX}
 	 */
-	public static String mangle(SootMethodRef methodRef) {
+	public String mangle(SootMethodRef methodRef) {
 		return "m_" + methodRef.name().replace('.', '_').replace('<', ' ').replace('>', ' ').trim();
 	}
 	
@@ -52,8 +53,8 @@ public class Mangling {
 	 * @param method the {@link SootClass}
 	 * @return the mangled name
 	 */	
-	public static String mangle(SootClass clazz) {
-		return clazz.getName().replace('.', '_').trim();
+	public String mangle(SootClass clazz) {
+		return clazz.getName().replace('.', '_').replace('$', '_').trim();
 	}
 	
 	/**
@@ -62,7 +63,7 @@ public class Mangling {
 	 * @param type the Type to mangle
 	 * @return the mangled type name
 	 */
-	public static String mangle(Type type) {		
+	public String mangle(Type type) {		
 		if(type instanceof RefType) {
 			return type.toString().replace('.', '_');
 		}
@@ -77,7 +78,7 @@ public class Mangling {
 	 * @param numeric the float literal
 	 * @return the mangled float literal
 	 */
-	public static String mangleFloat(String numeric) {
+	public String mangleFloat(String numeric) {
 		if(numeric.equals("Infinity")) return "std::numeric_limits<float>::infinity();";
 		if(numeric.equals("-Infinity")) return "-std::numeric_limits<float>::infinity();";
 		if(numeric.equals("NaN")) return "std::numeric_limits<float>::signaling_NaN();";
@@ -89,7 +90,7 @@ public class Mangling {
 	 * @param numeric the double literal
 	 * @return the mangled double literal
 	 */
-	public static String mangleDouble(String numeric) {
+	public String mangleDouble(String numeric) {
 		if(numeric.equals("Infinity")) return "std::numeric_limits<double>::infinity();";
 		if(numeric.equals("-Infinity")) return "-std::numeric_limits<double>::infinity();";
 		if(numeric.equals("NaN")) return "std::numeric_limits<float>::signaling_NaN();";

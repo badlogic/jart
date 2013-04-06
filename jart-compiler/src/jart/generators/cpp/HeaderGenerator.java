@@ -4,10 +4,9 @@ import jart.info.ClassInfo;
 import jart.info.FieldInfo;
 import jart.info.MethodInfo;
 import jart.info.SyntheticMethodInfo;
-import jart.utils.CTypes;
 import jart.utils.FileDescriptor;
-import jart.utils.Mangling;
 import jart.utils.SourceWriter;
+import jart.utils.TypeConverter;
 import soot.SootClass;
 import soot.SootField;
 import soot.SootMethod;
@@ -21,6 +20,8 @@ import soot.VoidType;
  *
  */
 public class HeaderGenerator {
+	private static CppMangler mangler = new CppMangler();
+	private static TypeConverter typeConverter = new CppTypeConverter();
 	final SootClass clazz;
 	final ClassInfo info;
 	final String fileName;
@@ -106,7 +107,7 @@ public class HeaderGenerator {
 		}
 		
 		// emit getClass() implementation
-		writer.wl("virtual java_lang_Class* m_getClass() { return " + Mangling.mangle(clazz) + "::clazz; }");
+		writer.wl("virtual java_lang_Class* m_getClass() { return " + mangler.mangle(clazz) + "::clazz; }");
 		
 		// if we don't have a <clinit> declaration, create one!
 		if(!info.hasClinit) {
@@ -143,13 +144,13 @@ public class HeaderGenerator {
 			methodSig +="virtual ";
 		}
 		
-		methodSig += CTypes.toCType(method.getReturnType());
-		methodSig += " " + Mangling.mangle(method) + "(";
+		methodSig += typeConverter.toType(method.getReturnType());
+		methodSig += " " + mangler.mangle(method) + "(";
 		
 		int i = 0;
 		for(Object paramType: method.getParameterTypes()) {
 			if(i > 0) methodSig += ", ";
-			methodSig += CTypes.toCType((Type)paramType);
+			methodSig += typeConverter.toType((Type)paramType);
 			methodSig += " param" + i;
 			i++;
 		}
@@ -166,18 +167,18 @@ public class HeaderGenerator {
 		
 		methodSig +="virtual ";		
 		methodSig += syntheticMethod.returnType;
-		methodSig += " " + Mangling.mangle(baseMethod) + "(";
+		methodSig += " " + mangler.mangle(baseMethod) + "(";
 		
 		int i = 0;
 		for(Object paramType: baseMethod.getParameterTypes()) {
 			if(i > 0) methodSig += ", ";
-			methodSig += CTypes.toCType((Type)paramType);
+			methodSig += typeConverter.toType((Type)paramType);
 			methodSig += " param" + i;
 			i++;
 		}
 		boolean hasReturnType = !(baseMethod.getReturnType() instanceof VoidType);
 		if(!syntheticMethod.isPure) {
-			methodSig +=") { " + (hasReturnType?"return ":"") + Mangling.mangle(baseMethod.getDeclaringClass()) + "::" + Mangling.mangle(baseMethod) + "(";
+			methodSig +=") { " + (hasReturnType?"return ":"") + mangler.mangle(baseMethod.getDeclaringClass()) + "::" + mangler.mangle(baseMethod) + "(";
 			for(i = 0; i < baseMethod.getParameterTypes().size(); i++) {
 				if(i > 0) methodSig += ", ";
 				methodSig += " param" + i;

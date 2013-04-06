@@ -8,6 +8,7 @@ package jart.utils;
  */
 public class SourceWriter {
 	int indent;
+	boolean idented = false;;
 	final StringBuffer buffer = new StringBuffer();
 	
 	public SourceWriter() {		
@@ -21,10 +22,24 @@ public class SourceWriter {
 		return buffer.toString();
 	}
 	
+	public void wl() {
+		buffer.append("\n");
+		idented = false;
+	}
+	
 	public void wl(String message) {
 		buffer.append(i());
 		buffer.append(message);
 		buffer.append("\n");
+		idented = false;
+	}
+	
+	public void w(String message) {
+		if(!idented) {
+			buffer.append(i());
+			idented = true;
+		}
+		buffer.append(message);
 	}
 	
 	public void push() {

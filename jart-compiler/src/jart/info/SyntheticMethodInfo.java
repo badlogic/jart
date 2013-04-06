@@ -1,6 +1,7 @@
 package jart.info;
 
-import jart.utils.CTypes;
+import jart.generators.cpp.CppTypeConverter;
+import jart.utils.TypeConverter;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,13 +35,13 @@ public class SyntheticMethodInfo {
 	/** whether this method is pure (== Java abstract, no implementation) **/
 	public final boolean isPure;
 	
-	public SyntheticMethodInfo(SootMethod method, boolean isPure) {
+	public SyntheticMethodInfo(TypeConverter converter, SootMethod method, boolean isPure) {
 		this.baseMethod = method;
-		this.returnType = CTypes.toCType(method.getReturnType());
+		this.returnType = converter.toType(method.getReturnType());
 		this.isPure = isPure;
 	}
 	
-	public static List<SyntheticMethodInfo> generateSyntheticMethods(SootClass clazz, Collection<SootMethod> methods) {
+	public static List<SyntheticMethodInfo> generateSyntheticMethods(TypeConverter converter, SootClass clazz, Collection<SootMethod> methods) {
 		List<SyntheticMethodInfo> synMethods = new ArrayList<SyntheticMethodInfo>();
 		List<SootMethod> emittedMethods = new ArrayList<SootMethod>(methods); 
 		
@@ -53,7 +54,7 @@ public class SyntheticMethodInfo {
 			if(missingMethods.size() > 0) {
 				System.out.println("generating synthetic methods: " + missingMethods);
 				for(SootMethod method: missingMethods) {
-					synMethods.add(new SyntheticMethodInfo(method, method.isAbstract()));
+					synMethods.add(new SyntheticMethodInfo(converter, method, method.isAbstract()));
 					emittedMethods.add(method);
 				}
 			}
@@ -69,7 +70,7 @@ public class SyntheticMethodInfo {
 					System.out.println("generating synthetic pure methods: " + missingMethods);
 					for(SootMethod method: missingMethods) {
 						if(!containsSameSignatureMethod(emittedMethods, method)) {
-							synMethods.add(new SyntheticMethodInfo(method, true));
+							synMethods.add(new SyntheticMethodInfo(converter, method, true));
 						}
 					}
 				}

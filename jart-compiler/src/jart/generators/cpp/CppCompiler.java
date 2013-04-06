@@ -2,6 +2,8 @@ package jart.generators.cpp;
 
 import jart.info.ClassInfo;
 import jart.utils.JavaSourceProvider;
+import jart.utils.Mangler;
+import jart.utils.TypeConverter;
 
 import java.util.Map;
 import java.util.Set;
@@ -9,6 +11,9 @@ import java.util.Set;
 import soot.SootClass;
 
 public class CppCompiler implements jart.Compiler {
+	Mangler mangler = new CppMangler();
+	TypeConverter typeConverter = new CppTypeConverter();
+	
 	/**
 	 * Generates .dart files for each class found in the classpath
 	 */
@@ -47,5 +52,15 @@ public class CppCompiler implements jart.Compiler {
 	 */
 	private void generateAuxiliary(String outputPath, Set<SootClass> classes, Map<SootClass, ClassInfo> classInfos) {		
 		new RuntimeGenerator(classes, classInfos, outputPath).generate();
+	}
+
+	@Override
+	public Mangler getMangler() {
+		return mangler;
+	}
+
+	@Override
+	public TypeConverter getTypeConverter() {
+		return typeConverter;
 	}
 }

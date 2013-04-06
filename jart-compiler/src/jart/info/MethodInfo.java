@@ -1,6 +1,7 @@
 package jart.info;
 
-import jart.utils.Mangling;
+import jart.generators.cpp.CppMangler;
+import jart.utils.Mangler;
 import soot.SootClass;
 import soot.SootMethod;
 
@@ -17,9 +18,9 @@ public class MethodInfo {
 	public final String mangledName;
 	public boolean skip;	
 	
-	public MethodInfo(SootMethod method) {
+	public MethodInfo(Mangler mangler, SootMethod method) {
 		this.method = method;
-		this.mangledName = Mangling.mangle(method);
+		this.mangledName = mangler.mangle(method);
 		
 		// check if this is a bridge method and whether we 
 		// need to emit it. Set the skip flag.

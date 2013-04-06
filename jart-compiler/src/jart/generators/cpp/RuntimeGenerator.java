@@ -2,7 +2,6 @@ package jart.generators.cpp;
 
 import jart.info.ClassInfo;
 import jart.utils.FileDescriptor;
-import jart.utils.Mangling;
 import jart.utils.SourceWriter;
 
 import java.util.Map;
@@ -19,6 +18,7 @@ import soot.SootClass;
  *
  */
 public class RuntimeGenerator {
+	private static CppMangler mangler = new CppMangler();
 	private final Set<SootClass> classes;
 	private final Map<SootClass, ClassInfo> infos;
 	private final String outputPath;
@@ -36,7 +36,7 @@ public class RuntimeGenerator {
 		writer.wl("#define jack_all_classes");
 		
 		for(SootClass c: classes) {
-			writer.wl("#include \"classes/" + Mangling.mangle(c) + ".h\"");
+			writer.wl("#include \"classes/" + mangler.mangle(c) + ".h\"");
 		}
 		
 		// add array.h for arrays
@@ -66,7 +66,7 @@ public class RuntimeGenerator {
 		writer.wl("java_lang_Object::m_clinit();");
 		
 		for(SootClass c: classes) {
-			writer.wl(Mangling.mangle(c) + "::m_clinit();");
+			writer.wl(mangler.mangle(c) + "::m_clinit();");
 		}
 		writer.pop();
 		writer.wl("}");

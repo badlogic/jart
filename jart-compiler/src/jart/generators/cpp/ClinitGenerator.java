@@ -2,7 +2,6 @@ package jart.generators.cpp;
 
 import jart.info.ClassInfo;
 import jart.utils.JavaSourceProvider;
-import jart.utils.Mangling;
 import jart.utils.SourceWriter;
 
 import java.util.TreeMap;
@@ -11,6 +10,7 @@ import soot.SootClass;
 import soot.SootMethod;
 
 public class ClinitGenerator {
+	private static CppMangler mangler = new CppMangler();
 	private final SourceWriter writer;
 	private final JavaSourceProvider sourceProvider;
 	private final ClassInfo info;
@@ -24,17 +24,17 @@ public class ClinitGenerator {
 	}
 	
 	public void generate() {
-		writer.wl("void " + Mangling.mangle(info.clazz) + "::m_clinit() {");
+		writer.wl("void " + mangler.mangle(info.clazz) + "::m_clinit() {");
 		writer.push();
 		writer.wl("// would enter class monitor for this class' clinit method");
 		writer.wl("{");
 		writer.push();
 		
 		// check if clinit was already called and bail out in that case
-		writer.wl("if(" + Mangling.mangle(info.clazz) + "::clinit) return;");
+		writer.wl("if(" + mangler.mangle(info.clazz) + "::clinit) return;");
 		
 		// set the clinit flag of this class as a guard
-		writer.wl(Mangling.mangle(info.clazz) + "::clinit = true;");
+		writer.wl(mangler.mangle(info.clazz) + "::clinit = true;");
 		
 		// generate the string literal definitions
 		info.literals.generateDefinitions(writer);
@@ -48,13 +48,13 @@ public class ClinitGenerator {
 		// generate clinit calls for dependencies, sorted
 		TreeMap<String, SootClass> dependencies = new TreeMap<String, SootClass>();
 		for(SootClass dependency: info.dependencies) {
-			String name = Mangling.mangle(dependency);
+			String name = mangler.mangle(dependency);
 			if(!dependencies.containsKey(name)) {
 				dependencies.put(name, dependency);
 			}
 		}
 		for(SootClass dependency: dependencies.values()) {
-			writer.wl(Mangling.mangle(dependency) + "::m_clinit();");
+			writer.wl(mangler.mangle(dependency) + "::m_clinit();");
 		}		
 		
 		// generate the method body

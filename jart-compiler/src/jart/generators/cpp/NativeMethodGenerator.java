@@ -1,9 +1,8 @@
 package jart.generators.cpp;
 
 import jart.info.ClassInfo;
-import jart.utils.CTypes;
-import jart.utils.Mangling;
 import jart.utils.SourceWriter;
+import jart.utils.TypeConverter;
 
 import java.util.List;
 
@@ -18,6 +17,8 @@ import soot.tagkit.Tag;
  *
  */
 public class NativeMethodGenerator {
+	private static CppMangler mangler = new CppMangler();
+	private static TypeConverter typeConverter = new CppTypeConverter();
 	private final SourceWriter writer;
 	private final ClassInfo info;
 	private final SootMethod method;
@@ -43,13 +44,13 @@ public class NativeMethodGenerator {
 		
 		// output the signature
 		String methodSig = "";
-		methodSig += CTypes.toCType(method.getReturnType());
-		methodSig += " " + info.mangledName + "::" + Mangling.mangle(method) + "(";
+		methodSig += typeConverter.toType(method.getReturnType());
+		methodSig += " " + info.mangledName + "::" + mangler.mangle(method) + "(";
 		
 		int i = 0;
 		for(Object paramType: method.getParameterTypes()) {
 			if(i > 0) methodSig += ", ";
-			methodSig += CTypes.toCType((Type)paramType);
+			methodSig += typeConverter.toType((Type)paramType);
 			methodSig += " param" + i;
 			i++;
 		}

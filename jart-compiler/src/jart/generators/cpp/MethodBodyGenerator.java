@@ -2,9 +2,9 @@ package jart.generators.cpp;
 
 import jart.info.ClassInfo;
 import jart.info.MethodInfo;
-import jart.utils.CTypes;
 import jart.utils.JavaSourceProvider;
 import jart.utils.SourceWriter;
+import jart.utils.TypeConverter;
 import soot.Local;
 import soot.NullType;
 import soot.SootMethod;
@@ -19,6 +19,7 @@ import soot.SootMethod;
  *
  */
 public class MethodBodyGenerator {
+	private final TypeConverter typeConverter = new CppTypeConverter();
 	private final SourceWriter writer;
 	private final JavaSourceProvider sourceProvider;
 	private final ClassInfo info;
@@ -50,7 +51,7 @@ public class MethodBodyGenerator {
 			if(local.getType() instanceof NullType) {
 				cType = "java_lang_Object*";
 			} else {
-				cType = CTypes.toCType(local.getType());
+				cType = typeConverter.toType(local.getType());
 			}
 			writer.wl(cType + " " + local.getName() + " = 0;");
 		}

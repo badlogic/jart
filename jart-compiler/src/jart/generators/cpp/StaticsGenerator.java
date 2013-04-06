@@ -1,9 +1,8 @@
 package jart.generators.cpp;
 
 import jart.info.ClassInfo;
-import jart.utils.CTypes;
-import jart.utils.Mangling;
 import jart.utils.SourceWriter;
+import jart.utils.TypeConverter;
 
 import java.util.TreeMap;
 
@@ -22,6 +21,8 @@ import soot.tagkit.Tag;
  *
  */
 public class StaticsGenerator {
+	private static CppMangler mangler = new CppMangler();
+	private static TypeConverter typeConverter = new CppTypeConverter();
 	private final SourceWriter writer;
 	private final ClassInfo info;
 	
@@ -45,34 +46,34 @@ public class StaticsGenerator {
 		writer.wl("#include \"classes/" + info.mangledName + ".h\"");
 		TreeMap<String, SootClass> dependencies = new TreeMap<String, SootClass>();
 		for(SootClass dependency: info.dependencies) {
-			String name = Mangling.mangle(dependency);
+			String name = mangler.mangle(dependency);
 			if(!dependencies.containsKey(name)) {
 				dependencies.put(name, dependency);
 			}
 		}
 		for(SootClass dependency: dependencies.values()) {
-			writer.wl("#include \"classes/" + Mangling.mangle(dependency) + ".h\"");			
+			writer.wl("#include \"classes/" + mangler.mangle(dependency) + ".h\"");			
 		}
 		writer.wl("");
 		
 		// generate static fields and initialize them with constant values
 		for(SootField field: info.clazz.getFields()) {
 			if(field.isStatic()) {
-				String cType = CTypes.toCType(field.getType());
+				String cType = typeConverter.toType(field.getType());
 				String constantValue = null;
 				
 				for(Tag tag: field.getTags()) {
-					if(tag instanceof FloatConstantValueTag) constantValue = Mangling.mangleFloat(Float.toString(((FloatConstantValueTag)tag).getFloatValue()));
-					if(tag instanceof DoubleConstantValueTag) constantValue = Mangling.mangleDouble(Double.toString(((DoubleConstantValueTag)tag).getDoubleValue()));
+					if(tag instanceof FloatConstantValueTag) constantValue = mangler.mangleFloat(Float.toString(((FloatConstantValueTag)tag).getFloatValue()));
+					if(tag instanceof DoubleConstantValueTag) constantValue = mangler.mangleDouble(Double.toString(((DoubleConstantValueTag)tag).getDoubleValue()));
 					if(tag instanceof IntegerConstantValueTag) constantValue = Integer.toString(((IntegerConstantValueTag)tag).getIntValue());
 					if(tag instanceof LongConstantValueTag) constantValue = Long.toString(((LongConstantValueTag)tag).getLongValue());
 					if(constantValue != null) break;
 				}
 				
 				if(constantValue == null)
-					writer.wl(cType + " " + info.mangledName + "::" + Mangling.mangle(field) + " = 0;");
+					writer.wl(cType + " " + info.mangledName + "::" + mangler.mangle(field) + " = 0;");
 				else
-					writer.wl(cType + " " + info.mangledName + "::" + Mangling.mangle(field) + " = " + constantValue + ";");
+					writer.wl(cType + " " + info.mangledName + "::" + mangler.mangle(field) + " = " + constantValue + ";");
 			}
 		}
 		

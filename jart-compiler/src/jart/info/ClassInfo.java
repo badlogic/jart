@@ -1,7 +1,9 @@
 package jart.info;
 
+import jart.generators.cpp.CppMangler;
 import jart.generators.cpp.LiteralsGenerator;
-import jart.utils.Mangling;
+import jart.utils.Mangler;
+import jart.utils.TypeConverter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +37,8 @@ import soot.jimple.Stmt;
  *
  */
 public class ClassInfo {
+	public final Mangler mangler;
+	public final TypeConverter typeConverter;
 	public final SootClass clazz;
 	public String mangledName;
 	/** classes that need to be #included in the header file **/
@@ -64,14 +68,16 @@ public class ClassInfo {
 	 * this instance with it.
 	 * @param clazz the {@link SootClass} instance to generate the info for
 	 */
-	public ClassInfo(SootClass clazz) {
+	public ClassInfo(Mangler mangler, TypeConverter converter, SootClass clazz) {
+		this.mangler = mangler;
+		this.typeConverter = converter;
 		this.clazz = clazz;
-		this.literals = new LiteralsGenerator(Mangling.mangle(clazz));
+		this.literals = new LiteralsGenerator(mangler.mangle(clazz));
 		generateClassInfo();
 	}
 	
 	private void generateClassInfo() {
-		this.mangledName = Mangling.mangle(clazz);
+		this.mangledName = mangler.mangle(clazz);
 		generateIncludesAndForwardsInfo();
 		generateClassHeaderInfo();
 		generateFieldInfo();
@@ -83,7 +89,7 @@ public class ClassInfo {
 	
 	private void generateFieldInfo() {
 		for(SootField field: clazz.getFields()) {
-			fieldInfos.put(field, new FieldInfo(field));
+			fieldInfos.put(field, new FieldInfo(mangler, typeConverter, field));
 		}
 	}
 	
@@ -92,7 +98,7 @@ public class ClassInfo {
 		// is found, store that info. it's used in the
 		// source generators to decide whether to synthesize it or not.
 		for(SootMethod method: clazz.getMethods()) {
-			MethodInfo methodInfo = new MethodInfo(method);
+			MethodInfo methodInfo = new MethodInfo(mangler, method);
 			if(methodInfo.skip) continue;
 			
 			methodInfos.put(method, methodInfo);
@@ -103,7 +109,7 @@ public class ClassInfo {
 		
 		// generate any synthetic methods, we pass in the methods that
 		// we are going to emit as well.
-		syntheticMethods = SyntheticMethodInfo.generateSyntheticMethods(clazz, methodInfos.keySet());
+		syntheticMethods = SyntheticMethodInfo.generateSyntheticMethods(typeConverter, clazz, methodInfos.keySet());
 	}
 
 	/**
@@ -113,10 +119,10 @@ public class ClassInfo {
 		// gather super class and implemented interfaces, these
 		// need to be included via #include.
 		if(clazz.hasSuperclass()) {
-			includedClasses.add(Mangling.mangle(clazz.getSuperclass()));
+			includedClasses.add(mangler.mangle(clazz.getSuperclass()));
 		}
 		for(SootClass itf: clazz.getInterfaces()) {
-			includedClasses.add(Mangling.mangle(itf));
+			includedClasses.add(mangler.mangle(itf));
 		}
 		
 		// figure out covariant return types and output #includes for those
@@ -127,7 +133,7 @@ public class ClassInfo {
 			if(covariantMethod.getReturnType() instanceof RefType) {
 				SootClass returnType = ((RefType)covariantMethod.getReturnType()).getSootClass();
 				if(returnType == clazz) continue;
-				includedClasses.add(Mangling.mangle(returnType));
+				includedClasses.add(mangler.mangle(returnType));
 			}
 		}			
 		
@@ -148,12 +154,12 @@ public class ClassInfo {
 		}
 		
 		// remove this class, the super class and interfaces from forward decls
-		forwardedClasses.remove(Mangling.mangle(clazz));
+		forwardedClasses.remove(mangler.mangle(clazz));
 		if(clazz.hasSuperclass()) {
-			forwardedClasses.remove(Mangling.mangle(clazz.getSuperclass()));
+			forwardedClasses.remove(mangler.mangle(clazz.getSuperclass()));
 		}
 		for(SootClass itf: clazz.getInterfaces()) {
-			forwardedClasses.remove(Mangling.mangle(itf));
+			forwardedClasses.remove(mangler.mangle(itf));
 		}		
 	}
 	
@@ -164,7 +170,7 @@ public class ClassInfo {
 		if(type instanceof ArrayType) {
 			if(((ArrayType) type).baseType instanceof PrimType) return;
 		}
-		forwardedClasses.add(Mangling.mangle(type));
+		forwardedClasses.add(mangler.mangle(type));
 	}
 	
 	/**
@@ -220,7 +226,7 @@ public class ClassInfo {
 		// interfaces do not inherit from java.lang.Object
 		if(clazz.hasSuperclass() || clazz.getInterfaceCount() > 0) {			
 			if(clazz.hasSuperclass() && !clazz.isInterface()) {
-				superClass = Mangling.mangle(clazz.getSuperclass());
+				superClass = mangler.mangle(clazz.getSuperclass());
 			}
 			if(clazz.isInterface()) {
 				superClass = "java_lang_Object";
@@ -230,7 +236,7 @@ public class ClassInfo {
 				// check if the interface is already implemented by a super
 				// class and omit it in that case.
 				if(isInterfaceImplementedBySuperClass(clazz, itf)) continue;								
-				interfaces.add(Mangling.mangle(itf));											
+				interfaces.add(mangler.mangle(itf));											
 			}
 		} else {
 			// if this is java.lang.Object we derrive from Boehm GC's gc

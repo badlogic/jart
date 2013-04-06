@@ -1,7 +1,6 @@
 package jart.generators.cpp;
 
 import jart.info.ClassInfo;
-import jart.utils.Mangling;
 import jart.utils.SourceWriter;
 
 import java.util.Map;
@@ -15,6 +14,7 @@ import soot.SootClass;
  *
  */
 public class ReflectionGenerator {
+	private static CppMangler mangler = new CppMangler();
 	private final SourceWriter writer;
 	private final Map<SootClass, ClassInfo> infos;
 	private final LiteralsGenerator literals;
@@ -59,7 +59,7 @@ public class ReflectionGenerator {
 	 */
 	private void addClassesToClassMap(SourceWriter writer) {
 		for(SootClass c: infos.keySet()) {
-			String var = Mangling.mangle(c) + "::clazz";
+			String var = mangler.mangle(c) + "::clazz";
 			writer.wl("java_lang_Class::m_addClass(" + var + ");");
 		}
 		writer.wl("java_lang_Class::m_addClass(java_lang_Byte::f_TYPE);");
@@ -80,7 +80,7 @@ public class ReflectionGenerator {
 	private void initializeClasses(SourceWriter writer) {
 		// initialize the java_lang_Class* for each class/interface
 		for(SootClass c: infos.keySet()) {
-			String var = Mangling.mangle(c) + "::clazz";
+			String var = mangler.mangle(c) + "::clazz";
 			writer.wl(var + "= new java_lang_Class();");
 			writer.wl(var + "->m_init();");
 		}
@@ -111,20 +111,20 @@ public class ReflectionGenerator {
 	}
 	
 	private void generateClassReflectionData(SourceWriter writer, SootClass c) {
-		String var = Mangling.mangle(c) + "::clazz";
+		String var = mangler.mangle(c) + "::clazz";
 		writer.wl(var + "->m_init();");
 		// FIXME reflection
 		writer.wl(var + "->f_name = " + literals.addLiteral(c.getName()) + ";");
 		writer.wl(var + "->f_isInterface = " + c.isInterface() + ";");
 		if(c.hasSuperclass()) {
-			writer.wl(var + "->f_superClass = " + Mangling.mangle(c.getSuperclass()) + "::clazz;");
+			writer.wl(var + "->f_superClass = " + mangler.mangle(c.getSuperclass()) + "::clazz;");
 		}
 		
 		// create array for interfaces
 		writer.wl(var + "->f_interfaces = new Array<java_lang_Class*>(" + c.getInterfaceCount() + ", false, 1, &java_lang_Class::clazz);");
 		int i = 0;
 		for(SootClass itf: c.getInterfaces()) {
-			writer.wl("(*" + var + "->f_interfaces)[" + i + "] = " + Mangling.mangle(itf) + "::clazz;");
+			writer.wl("(*" + var + "->f_interfaces)[" + i + "] = " + mangler.mangle(itf) + "::clazz;");
 			i++;
 		}
 		writer.wl("");

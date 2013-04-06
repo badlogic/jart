@@ -1,11 +1,10 @@
 package jart.generators.cpp;
 
 import jart.info.ClassInfo;
-import jart.utils.CTypes;
 import jart.utils.JavaSourceProvider;
 import jart.utils.JavaTypes;
-import jart.utils.Mangling;
 import jart.utils.SourceWriter;
+import jart.utils.TypeConverter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -105,6 +104,8 @@ import soot.tagkit.Tag;
  *
  */
 public class StatementGenerator {
+	private static CppMangler mangler = new CppMangler();
+	private static TypeConverter typeConverter = new CppTypeConverter();
 	private final SourceWriter writer;
 	private final JavaSourceProvider sourceProvider;
 	private final ClassInfo info;
@@ -273,7 +274,7 @@ public class StatementGenerator {
 			if(rightOp instanceof NewMultiArrayExpr) {
 				String target = translateValue(leftOp);
 				NewMultiArrayExpr v = (NewMultiArrayExpr)rightOp;
-				String elementType = CTypes.toCType(v.getBaseType().baseType);
+				String elementType = typeConverter.toType(v.getBaseType().baseType);
 				boolean isPrimitive = v.getBaseType().baseType instanceof PrimType;
 				List<String> sizes = new ArrayList<String>();
 				for(Object size: v.getSizes()) {
@@ -281,7 +282,7 @@ public class StatementGenerator {
 					sizes.add(translateValue(arraySize));
 				}
 				info.dependencies.add(JavaTypes.getClassFromType(v.getBaseType().baseType));
-				writer.wl(CTypes.generateMultiArray(target, elementType, isPrimitive, sizes));
+				writer.wl(typeConverter.generateMultiArray(target, elementType, isPrimitive, sizes));
 			} 
 			// null type need special treatment too, can't assign void* to class*
 			else if(rightOp.getType() instanceof NullType) {
@@ -300,7 +301,7 @@ public class StatementGenerator {
 			String l = translateValue(leftOp);
 			String r = translateValue(rightOp);
 			if(rightOp instanceof JCaughtExceptionRef) {
-				writer.wl(l + " = dynamic_cast<" + CTypes.toCType(leftOp.getType()) + ">(" + r + ");");
+				writer.wl(l + " = dynamic_cast<" + typeConverter.toType(leftOp.getType()) + ">(" + r + ");");
 			} else {
 				writer.wl(l + " = " + r + ";");
 			}
@@ -369,7 +370,7 @@ public class StatementGenerator {
 			List<Trap> traps = catches.get(stmt);
 			writer.pop();
 			for(Trap trap: traps) {
-				writer.wl("} catch(" + Mangling.mangle(trap.getException()) + "* e) { _exception = e; goto " + labels.get(trap.getHandlerUnit()) + "; }");
+				writer.wl("} catch(" + mangler.mangle(trap.getException()) + "* e) { _exception = e; goto " + labels.get(trap.getHandlerUnit()) + "; }");
 			}
 		}
 	}
@@ -420,8 +421,8 @@ public class StatementGenerator {
 			return "0";
 		} else if(val instanceof NumericConstant) {
 			NumericConstant v = (NumericConstant)val;
-			if(v instanceof FloatConstant) return Mangling.mangleFloat(v.toString());
-			if(v instanceof DoubleConstant) return Mangling.mangleDouble(v.toString());
+			if(v instanceof FloatConstant) return mangler.mangleFloat(v.toString());
+			if(v instanceof DoubleConstant) return mangler.mangleDouble(v.toString());
 			else return v.toString();
 		} else if(val instanceof StringConstant) {
 			StringConstant v = (StringConstant)val;
@@ -467,11 +468,11 @@ public class StatementGenerator {
 		} else if(val instanceof StaticFieldRef) {
 			StaticFieldRef v = (StaticFieldRef)val;
 			addDependency(v.getField().getDeclaringClass());
-			return Mangling.mangle(v.getField().getDeclaringClass()) + "::" + Mangling.mangle(v.getField());
+			return mangler.mangle(v.getField().getDeclaringClass()) + "::" + mangler.mangle(v.getField());
 		} else if(val instanceof InstanceFieldRef) {
 			InstanceFieldRef v = (InstanceFieldRef)val;
 			String target = translateValue(v.getBase());
-			return target + "->" + Mangling.mangle(v.getField()); 
+			return target + "->" + mangler.mangle(v.getField()); 
 		} else if(val instanceof IdentityRef) {
 			IdentityRef v = (IdentityRef)val;
 			if(v instanceof ThisRef) return "this";
@@ -593,7 +594,7 @@ public class StatementGenerator {
 			String r = translateValue(v.getOp2());
 			// FIXME operator
 			// this should work in C++, unsigned types will produce unsigned right shift (no 1-padding in the top most bits.)
-			return "((" + CTypes.toUnsignedCType(v.getOp1().getType()) + ")" + l + ") >> " + r;
+			return "((" + typeConverter.toUnsignedType(v.getOp1().getType()) + ")" + l + ") >> " + r;
 		} else if(val instanceof XorExpr) {
 			XorExpr v = (XorExpr)val;
 			String l = translateValue(v.getOp1());
@@ -601,7 +602,7 @@ public class StatementGenerator {
 			return l + " ^ " + r; // FIXME operator
 		} else if(val instanceof CastExpr) {
 			CastExpr v = (CastExpr)val;
-			String type = CTypes.toCType(v.getCastType());
+			String type = typeConverter.toType(v.getCastType());
 			String target = translateValue(v.getOp());
 			if(v.getCastType() instanceof PrimType) {
 				return "static_cast<" + type + ">(" + target + ")";
@@ -639,7 +640,7 @@ public class StatementGenerator {
 			InterfaceInvokeExpr v = (InterfaceInvokeExpr)val;
 			if(v.getBase().getType() instanceof NullType) return ""; // If we invoke on a NullType, we omit the expression.
 			String target = translateValue(v.getBase());
-			String method = Mangling.mangle(v.getMethod());
+			String method = mangler.mangle(v.getMethod());
 			String invoke = target + "->" + method + "(";			
 			invoke = outputArguments(invoke, v.getArgs(), v.getMethod().getParameterTypes());
 			invoke += ");";
@@ -648,8 +649,8 @@ public class StatementGenerator {
 			SpecialInvokeExpr v = (SpecialInvokeExpr)val;
 			if(v.getBase().getType() instanceof NullType) return ""; // If we invoke on a NullType, we omit the expression.
 			String target = translateValue(v.getBase());
-			String type = Mangling.mangle(v.getMethodRef().declaringClass());
-			String method = Mangling.mangle(v.getMethodRef());
+			String type = mangler.mangle(v.getMethodRef().declaringClass());
+			String method = mangler.mangle(v.getMethodRef());
 			String invoke = target + "->" + type + "::" + method + "(";
 			invoke = outputArguments(invoke, v.getArgs(), v.getMethod().getParameterTypes());
 			invoke += ");";
@@ -658,7 +659,7 @@ public class StatementGenerator {
 			VirtualInvokeExpr v = (VirtualInvokeExpr)val;
 			if(v.getBase().getType() instanceof NullType) return ""; // If we invoke on a NullType, we omit the expression.
 			String target = translateValue(v.getBase());			
-			String method = Mangling.mangle(v.getMethod());
+			String method = mangler.mangle(v.getMethod());
 			String invoke = target + "->" + method + "(";
 			invoke = outputArguments(invoke, v.getArgs(), v.getMethod().getParameterTypes());
 			invoke += ");";
@@ -666,22 +667,22 @@ public class StatementGenerator {
 		} else if(val instanceof StaticInvokeExpr) {
 			StaticInvokeExpr v = (StaticInvokeExpr)val;
 			addDependency(v.getMethod().getDeclaringClass());
-			String target = Mangling.mangle(v.getMethod().getDeclaringClass());
-			String method = Mangling.mangle(v.getMethod());
+			String target = mangler.mangle(v.getMethod().getDeclaringClass());
+			String method = mangler.mangle(v.getMethod());
 			String invoke = target + "::" + method + "(";
 			invoke = outputArguments(invoke, v.getArgs(), v.getMethod().getParameterTypes());
 			invoke += ");";
 			return invoke;
 		} else if(val instanceof NewArrayExpr) {
 			NewArrayExpr v = (NewArrayExpr)val;
-			String type = CTypes.toCType(v.getBaseType());
+			String type = typeConverter.toType(v.getBaseType());
 			boolean isPrimitive = v.getBaseType() instanceof PrimType;
 			String size = translateValue(v.getSize());
 			info.dependencies.add(JavaTypes.getClassFromType(v.getBaseType()));
-			return CTypes.generateArray(size, type, isPrimitive);
+			return typeConverter.generateArray(size, type, isPrimitive);
 		} else if(val instanceof NewExpr) {
 			NewExpr v = (NewExpr)val;
-			return "new " + Mangling.mangle(v.getType()) + "()";
+			return "new " + mangler.mangle(v.getType()) + "()";
 		} else if(val instanceof NewMultiArrayExpr) {
 			throw new UnsupportedOperationException("Should never process NewMultiArrayExpr here, implemented in translateStatement()");
 		} else if(val instanceof LengthExpr) {
@@ -698,8 +699,8 @@ public class StatementGenerator {
 		int i = 0;
 		for(Value arg: args) {
 			String a = translateValue(arg);
-			if(i > 0) output += ", (" + CTypes.toCType((Type)types.get(i)) + ")" + a;
-			else output += "(" + CTypes.toCType((Type)types.get(i)) + ")" + a;
+			if(i > 0) output += ", (" + typeConverter.toType((Type)types.get(i)) + ")" + a;
+			else output += "(" + typeConverter.toType((Type)types.get(i)) + ")" + a;
 			i++;
 		}
 		return output;

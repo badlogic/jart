@@ -1,7 +1,7 @@
 package jart.info;
 
-import jart.utils.CTypes;
-import jart.utils.Mangling;
+import jart.utils.Mangler;
+import jart.utils.TypeConverter;
 import soot.SootField;
 
 public class FieldInfo {
@@ -9,9 +9,9 @@ public class FieldInfo {
 	public final String mangledName;
 	public final String cType;
 	
-	public FieldInfo(SootField field) {
+	public FieldInfo(Mangler mangler, TypeConverter converter, SootField field) {
 		this.field = field;
-		this.mangledName = Mangling.mangle(field);
-		cType = CTypes.toCType(field.getType());
+		this.mangledName = mangler.mangle(field);
+		cType = converter.toType(field.getType());
 	}
 }
