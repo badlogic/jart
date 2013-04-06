@@ -83,6 +83,7 @@ public class Jart {
 		Options.v().set_keep_line_number(true);
 		Options.v().set_process_dir(Arrays.asList(classPath));
 		Scene.v().setSootClassPath(concatenatePath(classPath));
+		Options.v().set_full_resolver(true);
 		Scene.v().loadNecessaryClasses();
 		Scene.v().loadDynamicClasses();
 		
