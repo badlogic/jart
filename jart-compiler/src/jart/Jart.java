@@ -1,8 +1,9 @@
 package jart;
 
-import jart.generators.HeaderGenerator;
-import jart.generators.ImplementationGenerator;
-import jart.generators.RuntimeGenerator;
+import jart.generators.cpp.CppCompiler;
+import jart.generators.cpp.HeaderGenerator;
+import jart.generators.cpp.ImplementationGenerator;
+import jart.generators.cpp.RuntimeGenerator;
 import jart.info.ClassInfo;
 import jart.utils.FileDescriptor;
 import jart.utils.JavaSourceProvider;
@@ -27,13 +28,13 @@ import soot.options.Options;
  *
  */
 public class Jart {
+	private Compiler compiler;
 	private final String[] classPath;
 	private final String[] sourcePath;
 	private final String outputPath;
 	private Set<SootClass> classes;
 	private final Map<SootClass, ClassInfo> classInfos = new HashMap<SootClass, ClassInfo>();
 	private JavaSourceProvider sourceProvider;
-	private Set<String> generatedFiles = new HashSet<String>();
 	
 	/**
 	 * Creates a new compiler, setting the classpath directory,
@@ -44,12 +45,14 @@ public class Jart {
 	 * generated for them. This improves compilation times for the C++
 	 * code.
 	 * 
+	 * @param compiler the {@link Compiler} to use
 	 * @param classPath the directory containing the .class files
 	 * @param sourcePath the directory containing the Java source files
 	 * @param outputPath the output directory
 	 * @param incremental whether to incrementally translate files
 	 */
-	public Jart(String classPath, String sourcePath, String outputPath, boolean incremental) {
+	public Jart(Compiler compiler, String classPath, String sourcePath, String outputPath, boolean incremental) {
+		this.compiler = compiler;
 		this.classPath = parsePath(classPath);
 		this.sourcePath = parsePath(sourcePath);
 		this.outputPath = outputPath.endsWith("/")? outputPath: outputPath + "/";
@@ -67,7 +70,7 @@ public class Jart {
 		StringBuffer buffer = new StringBuffer();
 		for(int i = 0; i < paths.length; i++) {
 			buffer.append(paths[i]);
-			if(i != paths.length -1) buffer.append(";");
+			if(i != paths.length -1) buffer.append(":");
 		}
 		return buffer.toString();
 	}
@@ -89,7 +92,6 @@ public class Jart {
 		
 		Set<SootClass> classes = new HashSet<SootClass>();
 		for(SootClass clazz: Scene.v().getClasses()) {		
-			generatedFiles.add(Mangling.mangle(clazz) + ".dart");
 			classes.add(clazz);
 			ClassInfo info = new ClassInfo(clazz);
 			classInfos.put(clazz, info);
@@ -107,54 +109,8 @@ public class Jart {
 		for(String path: sourcePath) {
 			sourceProvider.load(new FileDescriptor(path));
 		}
-
-		generateHeaders();
-		generateImplementations();
-		generateAuxiliary();
 		
-		// delete all files that aren't in the classpath
-		for(String f: new File(outputPath).list(new FilenameFilter() {
-			@Override
-			public boolean accept(File arg0, String name) {
-				return name.endsWith(".dart");
-			}
-		})) {
-			if(!generatedFiles.contains(f)) {
-				System.out.println("deleting " + outputPath + f);
-				new File(outputPath + f).delete();
-			}
-		}
-	}
-	
-	/**
-	 * Generates the header file for each class
-	 */
-	private void generateHeaders() {
-		for(SootClass clazz: classes) {
-			ClassInfo info = classInfos.get(clazz);
-			HeaderGenerator headerGenerator = new HeaderGenerator(clazz, info, outputPath + info.mangledName + ".h");
-			headerGenerator.generate();
-		}
-	}
-	
-	/**
-	 * Generates the implementation file for each class
-	 */
-	private void generateImplementations() {
-		for(SootClass clazz: classes) {
-			ClassInfo info = classInfos.get(clazz);
-			info.gatherDependencies();
-			ImplementationGenerator implGenerator = new ImplementationGenerator(clazz, sourceProvider, info, outputPath + info.mangledName + ".cpp");
-			implGenerator.generate();
-		}
-	}
-	
-	/**
-	 * Generates auxiliary file, such as the implementation
-	 * of class initialization.
-	 */
-	private void generateAuxiliary() {		
-		new RuntimeGenerator(classes, classInfos, outputPath).generate();
+		compiler.compile(outputPath, sourceProvider, classes, classInfos);
 	}
 	
 	public static void main(String[] args) {
@@ -167,7 +123,10 @@ public class Jart {
 		String sources = args[1].endsWith("/")? args[1]: args[1] + "/";
 		String outputDir = args[2].endsWith("/")? args[2]: args[2] + "/";
 		
-		Jart compiler = new Jart(classpath, sources, outputDir, false);
-		compiler.compile();
+//		Compiler compiler = new JartCompiler();
+		Compiler compiler = new CppCompiler();
+		
+		Jart jart = new Jart(compiler, classpath, sources, outputDir, false);
+		jart.compile();
 	}
 }

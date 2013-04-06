@@ -1,6 +1,6 @@
 package jart.info;
 
-import jart.generators.LiteralsGenerator;
+import jart.generators.cpp.LiteralsGenerator;
 import jart.utils.Mangling;
 
 import java.util.ArrayList;
@@ -78,7 +78,7 @@ public class ClassInfo {
 		generateMethodInfo();
 		// FIXME this is invoked in the implementation stage in Jack#generateImplementation()
 		// to avoid loading all the Jimple code for already up to date classes.
-//		gatherDependencies();
+		// gatherDependencies();
 	}
 	
 	private void generateFieldInfo() {

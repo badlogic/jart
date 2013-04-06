@@ -1,4 +1,4 @@
-package jart.generators;
+package jart.generators.cpp;
 
 import jart.utils.SourceWriter;
 
